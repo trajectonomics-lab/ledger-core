@@ -1,58 +1,72 @@
 name: Release
 
+# Every push to main publishes an alpha (npm dist-tag "alpha"). Running this
+# workflow by hand on main publishes the stable version (dist-tag "latest"),
+# tags vX.Y.Z and creates a GitHub release. Versions are computed by
+# scripts/version.ts from git tags and commit messages; package.json "version"
+# is never edited by hand.
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - ".agents/**"
+      - ".claude/**"
+      - ".github/**"
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Dry-run publish"
-        required: false
-        default: false
-        type: boolean
-
-permissions:
-  contents: read
-  id-token: write
+      bump:
+        description: "Version bump. auto reads commit messages since the last release."
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # tag + GitHub release
+  id-token: write # npm provenance / trusted publishing
 
 jobs:
   publish:
-    name: Publish to npm
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event_name == 'workflow_dispatch' && 'stable' || 'alpha' }}
+      DIST_TAG: ${{ github.event_name == 'workflow_dispatch' && 'latest' || 'alpha' }}
+      BUMP: ${{ inputs.bump || 'auto' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags and commit messages drive the version
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: "https://registry.npmjs.org"
+          registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+      - run: bun run check
 
-      - name: Run verification checks
-        run: bun run check
+      - name: Compute version
+        id: version
+        run: |
+          VERSION=$(bun scripts/version.ts --channel "$CHANNEL" --bump "$BUMP")
+          echo "Publishing $VERSION as $DIST_TAG"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          npm version "$VERSION" --no-git-tag-version
 
       - name: Publish to npm
-        if: ${{ !inputs.dry_run }}
-        run: npm publish --access public --provenance
+        run: npm publish --tag "$DIST_TAG" --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Dry-run publish
-        if: ${{ inputs.dry_run }}
-        run: npm publish --access public --dry-run
+      - name: Tag and GitHub release
+        if: env.CHANNEL == 'stable'
+        run: gh release create "v${{ steps.version.outputs.version }}" --target "$GITHUB_SHA" --generate-notes
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
