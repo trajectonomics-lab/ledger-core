@@ -39,6 +39,13 @@ Decisions behind the API live in `docs/adr/`; vocabulary lives in `GLOSSARY.md`.
   seeded PRNG already in the property tests, so every failure reproduces from its seed.
 - Builders are tested through their builders, not by re-implementing their postings in the test.
 
+## Postponed work
+
+- A deferral leaves two things behind: an open issue, and `TODO(#<issue>)` at the site it belongs
+  to. Prose like "we should revisit this" with no issue number is a finding: it is a promise no one
+  will keep.
+- When the issue closes, the `TODO` goes with it.
+
 ## Files
 
 - One concern per file. The 100-line limit (200 for tests) is a ceiling, not a target: split by

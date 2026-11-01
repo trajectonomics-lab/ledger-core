@@ -1,4 +1,9 @@
-/** Every way a ledger input can be rejected. Each code names exactly one rule. */
+/**
+ * Every way a ledger input can be rejected. Each code names exactly one rule.
+ *
+ * TODO(#12): adding a code is source-breaking for a consumer that switches exhaustively over this
+ * union. How that growth is versioned and communicated is not decided yet.
+ */
 export type LedgerErrorCode =
 	| "SINGLE_POSTING"
 	| "INVALID_AMOUNT"
