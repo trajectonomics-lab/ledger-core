@@ -1,3 +1,4 @@
+// Core release semver calculator
 /**
  * Computes the version the Release workflow publishes. Nobody edits
  * package.json "version" by hand: stable versions come from git tags (vX.Y.Z),
