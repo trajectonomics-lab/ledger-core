@@ -17,6 +17,8 @@ Status: accepted (issue #2)
 - **Accounts carry no display name.** Labels are the consumer's concern; the core only needs `id`, `type`, `currency`, `entityId`, `parentId`.
 - **Validated values are immutable.** Transactions, postings, and dimensions are frozen, and a chart's `set`/`delete`/`clear` throw, so a held value cannot drift out of its invariants.
 - **Wire-shape checks belong to the consumer.** The core validates the rules above, not whether an untyped payload has a string `id` or a known `type`; the issue defines no error code for those and consumers translate at their boundary. A non-array `postings` is treated as too few postings.
+- **Id brands are nominal tags, not validators.** `accountId()` / `transactionId()` only separate the two id spaces in the type system; ids are opaque caller-supplied strings and are not checked for content.
+- **Header detection derives from the chart.** `isLeafAccount` recomputes the header set from the chart on a cache miss, so a chart built by the other ESM/CJS copy of the package never makes a header account look like a leaf.
 - **No dependencies.** No Zod or JSON Schema; consumers validate their own wire formats and pass plain data in.
 
 ## Consequences

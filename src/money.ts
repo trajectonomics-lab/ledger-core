@@ -11,7 +11,10 @@ export const toMinorUnits = (majorAmount: number, currency: string): number => {
 	if (!Number.isFinite(majorAmount)) {
 		throw new LedgerValidationError("INVALID_AMOUNT", "majorAmount", majorAmount, "must be finite")
 	}
-	const scaled = Number((Math.abs(majorAmount) * 10 ** digits).toPrecision(15))
+	const raw = Math.abs(majorAmount) * 10 ** digits
+	// Trimming to 15 significant digits removes float noise (1.005 * 100), but beyond 1e15
+	// it would erase real digits, and a double's own spacing there already exceeds the noise.
+	const scaled = raw < 1e15 ? Number(raw.toPrecision(15)) : raw
 	return assertSafeInteger(Math.sign(majorAmount) * Math.round(scaled) + 0, "majorAmount")
 }
 

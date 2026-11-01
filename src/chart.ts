@@ -14,13 +14,14 @@ export type ChartOfAccounts = Brand<ReadonlyMap<AccountId, Account>, "ChartOfAcc
 
 const headers = new WeakMap<ChartOfAccounts, ReadonlySet<AccountId>>()
 
-const toAccount = (input: AccountInput, index: number): Account => ({
-	id: input.id as AccountId,
-	type: input.type,
-	currency: parseCurrency(input.currency, `accounts[${index}].currency`),
-	entityId: input.entityId ?? "default",
-	...(input.parentId === undefined ? {} : { parentId: input.parentId as AccountId }),
-})
+const toAccount = (input: AccountInput, index: number): Account =>
+	Object.freeze({
+		id: input.id as AccountId,
+		type: input.type,
+		currency: parseCurrency(input.currency, `accounts[${index}].currency`),
+		entityId: input.entityId ?? "default",
+		...(input.parentId === undefined ? {} : { parentId: input.parentId as AccountId }),
+	})
 
 /** Validate accounts and build the chart. Throws {@link LedgerValidationError}. */
 export const createChartOfAccounts = (inputs: Iterable<AccountInput>): ChartOfAccounts => {
@@ -38,14 +39,22 @@ export const createChartOfAccounts = (inputs: Iterable<AccountInput>): ChartOfAc
 		accounts.set(account.id, account)
 	}
 	checkHierarchy(accounts)
-	const chart = seal(accounts) as unknown as ChartOfAccounts
-	headers.set(
-		chart,
-		new Set([...accounts.values()].flatMap((a) => (a.parentId === undefined ? [] : [a.parentId]))),
-	)
-	return chart
+	return seal(accounts) as unknown as ChartOfAccounts
+}
+
+/** Header ids, derived from the chart itself and cached per chart. A cache miss (e.g. a chart
+ * built by the other ESM/CJS copy of this package) recomputes, so it can never fail open. */
+const headerIds = (chart: ChartOfAccounts): ReadonlySet<AccountId> => {
+	let ids = headers.get(chart)
+	if (!ids) {
+		ids = new Set(
+			[...chart.values()].flatMap((a) => (a.parentId === undefined ? [] : [a.parentId])),
+		)
+		headers.set(chart, ids)
+	}
+	return ids
 }
 
 /** True when no other account in the chart names this account as its parent. */
 export const isLeafAccount = (chart: ChartOfAccounts, id: AccountId): boolean =>
-	!headers.get(chart)?.has(id)
+	chart.has(id) && !headerIds(chart).has(id)

@@ -61,3 +61,11 @@ describe("negative zero", () => {
 		expect(Object.is(toMinorUnits(-0.001, "THB"), 0)).toBe(true)
 	})
 })
+
+describe("large amounts", () => {
+	it("keeps every digit of minor-unit amounts above 1e15", () => {
+		expect(toMinorUnits(10_000_000_000_000.05, "USD")).toBe(1_000_000_000_000_005)
+		expect(toMinorUnits(1_000_000_000_000_005, "JPY")).toBe(1_000_000_000_000_005)
+		expect(toMinorUnits(-1_000_000_000_000_005, "JPY")).toBe(-1_000_000_000_000_005)
+	})
+})
