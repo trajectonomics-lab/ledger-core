@@ -65,7 +65,13 @@ jobs:
         run: npm install -g npm@^11.5.1
 
       - name: Publish to npm
-        run: npm publish --tag "$DIST_TAG" --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+          fi
+          npm publish --tag "$DIST_TAG" --provenance
 
       - name: Tag and GitHub release
         if: env.CHANNEL == 'stable'
