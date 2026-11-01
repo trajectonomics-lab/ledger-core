@@ -60,10 +60,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           npm version "$VERSION" --no-git-tag-version
 
+      # Trusted publishing (OIDC) needs npm >= 11.5.1; setup-node 22 ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+
       - name: Publish to npm
         run: npm publish --tag "$DIST_TAG" --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag and GitHub release
         if: env.CHANNEL == 'stable'
