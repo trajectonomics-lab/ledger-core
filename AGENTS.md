@@ -13,6 +13,10 @@ Instructions for AI coding agents in `trajectonomics-lab/ledger-core` (`@traject
 
 ## Agent skills
 
+### Reviewing a diff
+
+`CODING_STANDARDS.md`: the conventions `bun run check` cannot enforce. Read it when reviewing, not when implementing.
+
 ### Issue tracker
 
 GitHub Issues in `trajectonomics-lab/ledger-core`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
