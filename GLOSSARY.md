@@ -19,6 +19,11 @@ Domain vocabulary for `ledger-core`.
 - **ISODate**: A real calendar date `YYYY-MM-DD`. No time of day, no timezone.
 - **Dimensions**: Non-empty string key/value tags on a Posting (cost centre, project, class) for cost accounting.
 - **linkedTo**: A Transaction's pointer to the earlier Transaction it reverses or amends. Ledgers are append-only: corrections add Transactions, they never edit old ones.
+- **Simple Entry**: A Transaction with exactly two Postings, one Debit and one Credit. Built by `simple`. _Avoid_: transfer, `from`/`to` legs.
+- **Compound Entry**: A Transaction with three or more Postings, at least two of them on one side. Built by `compound`. _Avoid_: split.
+- **Reversal**: A Transaction whose Postings are the exact negation of an earlier Transaction's, in the same order, linked to it. Correcting a Transaction never edits it: a Reversal is a new Transaction. _Avoid_: void, delete, cancel.
+- **Amendment**: A Reversal paired with the Replacement Transaction that carries the corrected figures. The original stays, so the ledger shows what was recorded, what withdrew it, and what replaced it. _Avoid_: edit, update.
+- **Opening Balance**: The balance an Account starts the ledger with, posted against an Equity Account so the ledger still sums to zero. _Avoid_: initial amount.
 - **Balance**: The accumulated sum of Postings for an Account at a given point in time.
 - **Net Worth**: Total Assets minus total Liabilities.
 - **P&L (Profit and Loss)**: Income minus Expenses over a specific period.
