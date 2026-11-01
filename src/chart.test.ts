@@ -1,11 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import {
-	type AccountInput,
-	accountId,
-	createChartOfAccounts,
-	isLeafAccount,
-	LedgerValidationError,
-} from "./index"
+import { type AccountInput, accountId, createChartOfAccounts, LedgerValidationError } from "./index"
 
 const acct = (id: string, extra: Partial<AccountInput> = {}): AccountInput => ({
 	id,
@@ -89,19 +83,35 @@ describe("validated accounts", () => {
 		expect(Object.isFrozen(chart.get("cash" as never))).toBe(true)
 	})
 
-	it("isLeafAccount is false for ids not in the chart, true only for leaves", () => {
+	it("isLeaf is false for ids not in the chart, true only for leaves", () => {
 		const chart = createChartOfAccounts([acct("assets"), acct("cash", { parentId: "assets" })])
-		expect(isLeafAccount(chart, accountId("cash"))).toBe(true)
-		expect(isLeafAccount(chart, accountId("assets"))).toBe(false)
-		expect(isLeafAccount(chart, accountId("ghost"))).toBe(false)
+		expect(chart.isLeaf(accountId("cash"))).toBe(true)
+		expect(chart.isLeaf(accountId("assets"))).toBe(false)
+		expect(chart.isLeaf(accountId("ghost"))).toBe(false)
 	})
 })
 
-describe("charts unknown to this module instance", () => {
-	it("still report header accounts as non-leaf (fail closed)", () => {
+describe("chart immutability", () => {
+	it("cannot be mutated, not even through Map.prototype", () => {
 		const chart = createChartOfAccounts([acct("assets"), acct("cash", { parentId: "assets" })])
-		const foreign = new Map(chart) as unknown as typeof chart
-		expect(isLeafAccount(foreign, accountId("assets"))).toBe(false)
-		expect(isLeafAccount(foreign, accountId("cash"))).toBe(true)
+		const bypass = (): unknown => Map.prototype.set.call(chart, "x", {})
+		expect(bypass).toThrow(TypeError)
+		expect(() => Map.prototype.delete.call(chart, "cash")).toThrow(TypeError)
+		expect(chart.size).toBe(2)
+	})
+
+	it("is read-only through its own surface and iterates like a ReadonlyMap", () => {
+		const chart = createChartOfAccounts([acct("a"), acct("b")])
+		expect([...chart.keys()]).toEqual(["a", "b"] as never)
+		expect([...chart].length).toBe(2)
+		expect("set" in chart).toBe(false)
+	})
+
+	it("allows a header in a different currency from its children (documented in ADR 0001)", () => {
+		const chart = createChartOfAccounts([
+			acct("assets", { currency: "THB" }),
+			acct("usd-cash", { parentId: "assets" }),
+		])
+		expect(chart.isLeaf(accountId("usd-cash"))).toBe(true)
 	})
 })

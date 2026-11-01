@@ -18,7 +18,11 @@ Status: accepted (issue #2)
 - **Validated values are immutable.** Transactions, postings, and dimensions are frozen, and a chart's `set`/`delete`/`clear` throw, so a held value cannot drift out of its invariants.
 - **Wire-shape checks belong to the consumer.** The core validates the rules above, not whether an untyped payload has a string `id` or a known `type`; the issue defines no error code for those and consumers translate at their boundary. A non-array `postings` is treated as too few postings.
 - **Id brands are nominal tags, not validators.** `accountId()` / `transactionId()` only separate the two id spaces in the type system; ids are opaque caller-supplied strings and are not checked for content.
-- **Header detection derives from the chart.** `isLeafAccount` recomputes the header set from the chart on a cache miss, so a chart built by the other ESM/CJS copy of the package never makes a header account look like a leaf.
+- **`ChartOfAccounts` is a class with `#private` state, exported as a type only.** Nothing can construct or mutate one outside `createChartOfAccounts`, not even through `Map.prototype`, and its header set is computed at construction, so `chart.isLeaf(id)` can never go stale or fail open.
+- **Brands are unforgeable without a cast.** Object brands carry a `private` member (`Nominal<Tag>`), which TypeScript drops from spreads, so `{ ...transaction, postings: [...] }` does not typecheck as a `Transaction`. A deliberate `as` cast still can; that is the escape hatch of any TypeScript API.
+- **A header may have a different currency from its children.** The issue requires the same entity and account type only, and a multi-currency summary account is common. Headers hold no postings, so nothing sums across currencies without FX.
+- **Currency data is runtime-dependent.** Both the accepted code set and `maximumFractionDigits` come from the runtime's ICU data and may differ by version; Bun also accepts non-currency codes such as `XXX`. Pin one runtime when results must match across systems.
+- **Not enforced:** `linkedTo` equal to the transaction's own `id`, and postings that net to zero on a single account. Neither breaks a rule in the issue; reversal and amendment helpers own audit-chain semantics.
 - **No dependencies.** No Zod or JSON Schema; consumers validate their own wire formats and pass plain data in.
 
 ## Consequences

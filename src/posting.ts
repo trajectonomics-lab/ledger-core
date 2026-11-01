@@ -1,6 +1,5 @@
 import { assertSafeInteger } from "./amount"
-import type { ChartOfAccounts } from "./chart"
-import { isLeafAccount } from "./chart"
+import type { ChartOfAccounts } from "./chart-map"
 import type { Currency } from "./currency"
 import { parseCurrency } from "./currency"
 import { LedgerValidationError } from "./errors"
@@ -62,7 +61,7 @@ export const validatePosting = (
 			input.accountId,
 			"is not in the chart of accounts",
 		)
-	if (!isLeafAccount(chart, account.id))
+	if (!chart.isLeaf(account.id))
 		fail("NON_LEAF_ACCOUNT", `${path}.accountId`, account.id, "is a header account")
 	if (currency !== account.currency)
 		fail("CURRENCY_MISMATCH", `${path}.currency`, currency, `account is ${account.currency}`)

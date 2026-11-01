@@ -8,7 +8,7 @@ Domain vocabulary for `ledger-core`.
 - **Account Type**: One of `asset`, `liability`, `equity`, `income`, `expense`. There is no sixth type: opening balances are posted against ordinary `equity` accounts.
 - **Normal Balance**: The side on which an Account Type normally grows. **Debit** for `asset` and `expense`; **Credit** for `liability`, `equity`, and `income`.
 - **Entity**: The legal/accounting body that owns an Account (`entityId`, `"default"` if omitted). A Transaction must balance within each Entity separately.
-- **Chart of Accounts**: A validated set of Accounts. Every parent exists, shares its child's Entity and Account Type, and the hierarchy has no cycles. Produced only by `createChartOfAccounts`.
+- **Chart of Accounts**: A validated set of Accounts. Every parent exists, shares its child's Entity and Account Type, and the hierarchy has no cycles. A Header Account may use a different Currency from its children. Produced only by `createChartOfAccounts`; read-only afterwards.
 - **Header Account** (summary): An Account named as another Account's `parentId`. It only aggregates; nothing may be posted to it.
 - **Leaf Account** (detail): An Account no other Account names as parent. Postings target Leaf Accounts only.
 - **Currency**: An ISO 4217 alphabetic code (`THB`, `USD`, `JPY`). Its **Minor Unit** precision comes from the runtime's `Intl` data (THB 2, JPY 0, KWD 3, CLF 4).

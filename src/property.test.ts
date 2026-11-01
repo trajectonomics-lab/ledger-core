@@ -11,11 +11,20 @@ const groups = [
 	{ entityId: "e1", currency: "USD", ids: ["e1-usd-a", "e1-usd-b"] },
 	{ entityId: "e2", currency: "USD", ids: ["e2-usd-a", "e2-usd-b"] },
 	{ entityId: "e1", currency: "THB", ids: ["e1-thb-a", "e1-thb-b", "e1-thb-c"] },
+	{ entityId: "e2", currency: "JPY", ids: ["e2-jpy-a", "e2-jpy-b"] },
+	{ entityId: "e2", currency: "KWD", ids: ["e2-kwd-a", "e2-kwd-b"] },
 ] as const
+
+const types = ["asset", "liability", "equity", "income", "expense"] as const
 
 const chart = createChartOfAccounts(
 	groups.flatMap((g) =>
-		g.ids.map((id) => ({ id, type: "asset" as const, currency: g.currency, entityId: g.entityId })),
+		g.ids.map((id, i) => ({
+			id,
+			type: types[i % types.length]!,
+			currency: g.currency,
+			entityId: g.entityId,
+		})),
 	),
 )
 

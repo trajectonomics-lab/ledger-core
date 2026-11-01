@@ -1,5 +1,5 @@
 import type { Brand } from "./brand"
-import type { ChartOfAccounts } from "./chart"
+import type { ChartOfAccounts } from "./chart-map"
 import type { ISODate } from "./date"
 import { parseISODate } from "./date"
 import { LedgerValidationError } from "./errors"

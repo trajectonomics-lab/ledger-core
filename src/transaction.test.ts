@@ -4,6 +4,7 @@ import {
 	createChartOfAccounts,
 	LedgerValidationError,
 	type PostingInput,
+	type Transaction,
 	validateTransaction,
 } from "./index"
 
@@ -149,5 +150,36 @@ describe("validated output", () => {
 		expect(() => validateTransaction(tx([p("x", 5), p("y", -5)]), odd)).toThrow(
 			LedgerValidationError,
 		)
+	})
+})
+
+describe("unforgeable Transaction brand", () => {
+	it("a spread copy of a Transaction is not itself a Transaction", () => {
+		const t = validateTransaction(tx([p("rent", 5), p("cash", -5)]), chart)
+		// @ts-expect-error spreading drops the private brand member, so this must not compile
+		const forged: Transaction = { ...t, postings: [p("rent", 999)] }
+		expect(forged.postings).toHaveLength(1)
+	})
+})
+
+describe("error field paths and rule precedence", () => {
+	const fieldOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined => {
+		try {
+			validateTransaction(input, chart)
+		} catch (error) {
+			return (error as LedgerValidationError).field
+		}
+		return undefined
+	}
+	it("points at the offending posting and property", () => {
+		expect(fieldOf(tx([p("rent", 5), p("cash", 0)]))).toBe("postings[1].amount")
+		expect(fieldOf(tx([p("rent", 5), p("assets", -5)]))).toBe("postings[1].accountId")
+		expect(fieldOf(tx([p("rent", 5), p("cash", -5, "THB")]))).toBe("postings[1].currency")
+		expect(fieldOf(tx([p("rent", 5), p("cash", -5)], { date: "nope" }))).toBe("date")
+	})
+	it("reports the first failing posting when several are wrong", () => {
+		expect(codeOf(tx([p("ghost", 1.5), p("cash", 0)]))).toBe("INVALID_AMOUNT")
+		expect(codeOf(tx([p("ghost", 5), p("assets", 0)]))).toBe("UNKNOWN_ACCOUNT")
+		expect(codeOf(tx([p("cash", 0), p("ghost", 5)]))).toBe("ZERO_AMOUNT_POSTING")
 	})
 })

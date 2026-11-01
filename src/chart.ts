@@ -1,18 +1,9 @@
 import type { Account, AccountInput } from "./account"
-import type { Brand } from "./brand"
+import { ChartOfAccounts } from "./chart-map"
 import { parseCurrency } from "./currency"
 import { LedgerValidationError } from "./errors"
 import { checkHierarchy } from "./hierarchy"
 import type { AccountId } from "./ids"
-import { seal } from "./seal"
-
-/**
- * A validated, hierarchy-checked set of accounts. Only {@link createChartOfAccounts} produces
- * one, so holding one proves parents exist, share entity and type, and form no cycle.
- */
-export type ChartOfAccounts = Brand<ReadonlyMap<AccountId, Account>, "ChartOfAccounts">
-
-const headers = new WeakMap<ChartOfAccounts, ReadonlySet<AccountId>>()
 
 const toAccount = (input: AccountInput, index: number): Account =>
 	Object.freeze({
@@ -39,22 +30,5 @@ export const createChartOfAccounts = (inputs: Iterable<AccountInput>): ChartOfAc
 		accounts.set(account.id, account)
 	}
 	checkHierarchy(accounts)
-	return seal(accounts) as unknown as ChartOfAccounts
+	return new ChartOfAccounts(accounts)
 }
-
-/** Header ids, derived from the chart itself and cached per chart. A cache miss (e.g. a chart
- * built by the other ESM/CJS copy of this package) recomputes, so it can never fail open. */
-const headerIds = (chart: ChartOfAccounts): ReadonlySet<AccountId> => {
-	let ids = headers.get(chart)
-	if (!ids) {
-		ids = new Set(
-			[...chart.values()].flatMap((a) => (a.parentId === undefined ? [] : [a.parentId])),
-		)
-		headers.set(chart, ids)
-	}
-	return ids
-}
-
-/** True when no other account in the chart names this account as its parent. */
-export const isLeafAccount = (chart: ChartOfAccounts, id: AccountId): boolean =>
-	chart.has(id) && !headerIds(chart).has(id)

@@ -8,8 +8,8 @@
 
 export type { Account, AccountInput, AccountType, NormalBalance } from "./account"
 export { normalBalance } from "./account"
-export type { ChartOfAccounts } from "./chart"
-export { createChartOfAccounts, isLeafAccount } from "./chart"
+export { createChartOfAccounts } from "./chart"
+export type { ChartOfAccounts } from "./chart-map"
 export type { Currency } from "./currency"
 export { parseCurrency } from "./currency"
 export type { ISODate } from "./date"
