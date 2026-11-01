@@ -103,6 +103,12 @@
       "skillPath": "skills/misc/migrate-to-shoehorn/SKILL.md",
       "computedHash": "6397731ced114f3657aa88b55ed13d1344a56d77ca449c568e3200c21740fa99"
     },
+    "pick-the-issue": {
+      "source": "trajectonomics-lab/internal-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pick-the-issue/SKILL.md",
+      "computedHash": "f0be12442438d7af4f6fd107671f0aba2a3b8cbc49edca50ad253a7225f3e00a"
+    },
     "pr": {
       "source": "mattpocock/skills",
       "sourceType": "github",
