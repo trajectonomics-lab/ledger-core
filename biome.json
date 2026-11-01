@@ -8,7 +8,8 @@
 			"!**/coverage",
 			"!**/*.md",
 			"!**/skills-lock.json",
-			"!**/.agents"
+			"!**/.agents",
+			"!**/.claude"
 		]
 	},
 	"formatter": { "indentStyle": "tab", "lineWidth": 100 },
