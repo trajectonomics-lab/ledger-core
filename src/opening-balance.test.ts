@@ -67,5 +67,7 @@ describe("openingBalance", () => {
 		expect(t.postings[0]?.dimensions).toEqual({ project: "a" })
 		expect(t.postings[1]?.dimensions).toBeUndefined()
 		expect(Object.isFrozen(t)).toBe(true)
+		expect(Object.isFrozen(t.postings)).toBe(true)
+		expect(Object.isFrozen(t.postings[0]?.dimensions)).toBe(true)
 	})
 })

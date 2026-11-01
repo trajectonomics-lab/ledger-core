@@ -97,7 +97,9 @@ describe("reverse", () => {
 
 	it("returns a frozen transaction and leaves the original untouched", () => {
 		const snapshot = JSON.stringify(withDims)
-		const r = reverse(withDims, { id: "r2", date: "2026-03-05" }, chart)
+		const input = { id: "r2", date: "2026-03-05" }
+		const r = reverse(withDims, input, chart)
+		expect(input).toEqual({ id: "r2", date: "2026-03-05" })
 		expect(JSON.stringify(withDims)).toBe(snapshot)
 		expect(Object.isFrozen(r)).toBe(true)
 		expect(Object.isFrozen(r.postings)).toBe(true)

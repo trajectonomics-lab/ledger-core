@@ -18,6 +18,7 @@ describe("compound", () => {
 			},
 			chart,
 		)
+		expect(t.postings.map((p) => String(p.accountId))).toEqual(["cash", "revenue", "tax-payable"])
 		expect(t.postings.map((p) => p.amount)).toEqual([107, -100, -7])
 		expect(sum(t.postings.map((p) => p.amount))).toBe(0)
 	})
@@ -34,6 +35,7 @@ describe("compound", () => {
 			},
 			chart,
 		)
+		expect(t.postings.map((p) => String(p.accountId))).toEqual(["interest", "principal", "bank"])
 		expect(t.postings.map((p) => p.amount)).toEqual([30, 70, -100])
 	})
 
@@ -105,5 +107,6 @@ describe("compound", () => {
 		expect(t.postings.map((p) => p.dimensions)).toEqual([undefined, { project: "a" }, undefined])
 		expect(Object.isFrozen(t)).toBe(true)
 		expect(Object.isFrozen(t.postings)).toBe(true)
+		expect(Object.isFrozen(t.postings[1]?.dimensions)).toBe(true)
 	})
 })

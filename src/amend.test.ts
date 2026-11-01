@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { chart, codeOf } from "./builders.fixtures"
-import { amend, reverse, simple } from "./index"
+import { amend, reverse, simple, validateTransaction } from "./index"
 
 const original = simple(
 	{ id: "t1", date: "2026-03-01", debit: "rent", credit: "cash", amount: 500 },
@@ -27,10 +27,21 @@ describe("amend", () => {
 	})
 
 	it("overwrites a caller-validated replacement's previous linkedTo with the original's id", () => {
-		const previous = { ...corrected, linkedTo: "older" }
+		const previous = validateTransaction(
+			{
+				id: "t9",
+				date: "2026-03-02",
+				linkedTo: "older",
+				postings: [
+					{ accountId: "rent", amount: 450, currency: "USD" },
+					{ accountId: "cash", amount: -450, currency: "USD" },
+				],
+			},
+			chart,
+		)
 		const [, rep] = amend(original, { reversal, replacement: previous }, chart)
 		expect(rep.linkedTo).toBe(original.id)
-		expect(previous.linkedTo).toBe("older")
+		expect(String(previous.linkedTo)).toBe("older")
 	})
 
 	it("accepts a plain TransactionInput as the replacement", () => {
