@@ -11,6 +11,10 @@ export type LedgerErrorCode =
 	| "INVALID_CURRENCY"
 	| "INVALID_DIMENSION"
 	| "INVALID_ACCOUNT_HIERARCHY"
+	| "NEGATIVE_AMOUNT"
+	| "DUPLICATE_TRANSACTION_ID"
+	| "REVERSAL_BEFORE_ORIGINAL"
+	| "NON_EQUITY_CONTRA"
 
 /** Thrown by every smart constructor and validator in this package. */
 export class LedgerValidationError extends Error {
