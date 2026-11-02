@@ -11,6 +11,7 @@ summarize its scope, and recommend the exact skills and commands to proceed.
 """
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -62,29 +63,68 @@ def get_org_repos(org: str) -> List[str]:
 
 def get_active_t3_threads(custom_threads: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     threads = []
+    seen_ids = set()
+
     if custom_threads:
         for t in custom_threads:
-            threads.append({"title": t, "status": "running"})
+            threads.append({"title": t, "status": "custom", "is_custom": True})
         return threads
 
     if os.path.exists(T3_SQLITE_PATH):
         try:
             conn = sqlite3.connect(f"file:{T3_SQLITE_PATH}?mode=ro", uri=True)
             cursor = conn.cursor()
-            query = """
-            SELECT r.thread_id, t.title, r.status, r.requested_at
+
+            # 1. Any run currently active (running / queued / waiting)
+            query_runs = """
+            SELECT r.thread_id, t.title, r.status, r.requested_at, p.title, p.workspace_root
             FROM orchestration_v2_projection_runs r
             JOIN orchestration_v2_projection_threads t ON r.thread_id = t.thread_id
+            LEFT JOIN projection_projects p ON t.project_id = p.project_id
             WHERE r.completed_at IS NULL AND r.status IN ('running', 'starting', 'queued', 'waiting')
             ORDER BY r.requested_at DESC
             """
-            for row in cursor.execute(query):
+            for row in cursor.execute(query_runs):
+                seen_ids.add(row[0])
                 threads.append({
                     "thread_id": row[0],
                     "title": row[1],
                     "status": row[2],
-                    "requested_at": row[3],
+                    "updated_at": row[3],
+                    "project_name": row[4],
+                    "workspace_root": row[5],
                 })
+
+            # 2. Any non-archived, non-deleted thread updated in the past 6 hours
+            query_recent = """
+            SELECT t.thread_id, t.title, t.updated_at, p.title, p.workspace_root
+            FROM orchestration_v2_projection_threads t
+            LEFT JOIN projection_projects p ON t.project_id = p.project_id
+            WHERE t.archived_at IS NULL AND t.deleted_at IS NULL
+            ORDER BY t.updated_at DESC
+            LIMIT 25
+            """
+            cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=6)
+            for row in cursor.execute(query_recent):
+                tid, title, updated_at, p_name, ws_root = row
+                if tid in seen_ids:
+                    continue
+                try:
+                    # e.g. 2026-11-01T07:31:15.289Z
+                    dt = datetime.datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                    if dt >= cutoff:
+                        threads.append({
+                            "thread_id": tid,
+                            "title": title,
+                            "status": "active_session",
+                            "updated_at": updated_at,
+                            "project_name": p_name,
+                            "workspace_root": ws_root,
+                        })
+                        seen_ids.add(tid)
+                except Exception:
+                    pass
+
             conn.close()
         except Exception:
             pass
@@ -92,10 +132,48 @@ def get_active_t3_threads(custom_threads: Optional[List[str]] = None) -> List[Di
     return threads
 
 
+def is_thread_for_repo(t: Dict[str, Any], repo: str) -> bool:
+    repo_basename = repo.split("/")[-1].lower()
+    t_title = t.get("title", "")
+    t_lower = t_title.lower()
+
+    # 1. If thread title explicitly mentions the repo basename or full repo name
+    # e.g. "cli #4", "trajectonomics-lab/cli#4", "Review sim-core #3"
+    if re.search(rf"\b{re.escape(repo_basename)}\b", t_lower) or repo.lower() in t_lower:
+        return True
+
+    # If it was a custom thread without project metadata:
+    if t.get("is_custom"):
+        known_other = {"tax-core", "sim-core", "ledger-core", "cli", "design-system", "technical-template", "internal-skills"} - {repo_basename}
+        if any(re.search(rf"\b{re.escape(k)}\b", t_lower) for k in known_other):
+            return False
+        return True
+
+    # 2. Check project name and workspace root
+    ws = t.get("workspace_root") or ""
+    p_name = (t.get("project_name") or "").lower()
+
+    known_repos = {"tax-core", "sim-core", "ledger-core", "cli", "design-system", "technical-template", "internal-skills"}
+
+    if ws:
+        ws_base = os.path.basename(os.path.normpath(ws)).lower()
+        if ws_base == repo_basename:
+            return True
+        elif ws_base in known_repos:
+            return False
+
+    if p_name:
+        if p_name == repo_basename:
+            return True
+        elif p_name in known_repos:
+            return False
+
+    return False
+
+
 def check_is_handled_by_t3(
     repo: str, issue_num: int, issue_title: str, active_threads: List[Dict[str, Any]]
 ) -> Tuple[bool, Optional[str]]:
-    repo_basename = repo.split("/")[-1]
     title_words = [
         w.lower()
         for w in re.findall(r"[a-zA-Z]{4,}", issue_title)
@@ -106,13 +184,16 @@ def check_is_handled_by_t3(
         t_title = t.get("title", "")
         t_lower = t_title.lower()
 
+        # Thread must be scoped to this repo to consider handling this issue
+        if not is_thread_for_repo(t, repo):
+            continue
+
         # Match exact issue number references, e.g. "Issue 12", "issue #12", "#12"
         issue_pat = rf"(?:issue\s*#?|#){issue_num}\b"
         if re.search(issue_pat, t_lower):
-            if repo_basename.lower() in t_lower or f"#{issue_num}" in t_title or f"Issue {issue_num}" in t_title:
-                return True, t_title
+            return True, t_title
 
-        # Match word similarity for specific feature titles
+        # Match word similarity for specific feature titles within the same repo
         matched_words = sum(1 for w in title_words if w in t_lower)
         if len(title_words) >= 3 and matched_words >= 3:
             return True, t_title
@@ -152,8 +233,11 @@ def is_issue_open(issue_ref: str, current_repo: str, cache: Dict[str, bool]) -> 
     if "#" in issue_ref:
         parts = issue_ref.split("#")
         if parts[0]:
-            target_repo = parts[0]
-        target_num = parts[1]
+            target_repo = parts[0].strip()
+            if "/" not in target_repo:
+                owner = current_repo.split("/")[0] if "/" in current_repo else "trajectonomics-lab"
+                target_repo = f"{owner}/{target_repo}"
+        target_num = parts[1].strip()
     elif issue_ref.startswith("http"):
         m = re.search(r"github\.com/([\w.-]+/[\w.-]+)/issues/(\d+)", issue_ref)
         if m:
@@ -165,6 +249,8 @@ def is_issue_open(issue_ref: str, current_repo: str, cache: Dict[str, bool]) -> 
     if not target_num:
         cache[issue_ref] = False
         return False
+
+    target_num = target_num.lstrip("#")
 
     code, stdout, _ = run_command([
         "gh", "issue", "view", target_num, "--repo", target_repo, "--json", "state"
@@ -202,7 +288,7 @@ def check_is_blocked(
     patterns = [
         r"(?i)blocked\s+by\s+(?:the\s+[\w\s-]+\s+issue\s+)?\(?#(\d+)\)?",
         r"(?i)blocked\s+by\s+(https://github\.com/[\w.-]+/[\w.-]+/issues/\d+)",
-        r"(?i)blocked\s+by\s+([\w.-]+/[\w.-]+#\d+)",
+        r"(?i)blocked\s+by\s+((?:[\w.-]+/)?[\w.-]+#\d+)",
     ]
     for pat in patterns:
         for match in re.finditer(pat, body):

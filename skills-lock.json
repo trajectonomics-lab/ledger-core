@@ -107,7 +107,7 @@
       "source": "trajectonomics-lab/internal-skills",
       "sourceType": "github",
       "skillPath": "skills/pick-the-issue/SKILL.md",
-      "computedHash": "f0be12442438d7af4f6fd107671f0aba2a3b8cbc49edca50ad253a7225f3e00a"
+      "computedHash": "4dadf9a0aebfa7071442a2db2b5271239eeb4280e6f3c00c554f90ca39fe31fb"
     },
     "pr": {
       "source": "mattpocock/skills",
