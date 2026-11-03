@@ -1,0 +1,53 @@
+import type { ChartOfAccounts } from "./chart-map"
+import { byCodeUnit } from "./compare"
+import type { Currency } from "./currency"
+import { parseISODate } from "./date"
+import type { AccountId } from "./ids"
+import { scanLedger } from "./ledger-scan"
+import { toSafeAmount } from "./safe-amount"
+import type { Transaction } from "./transaction"
+
+/** One Leaf Account's raw signed Balance (Debit `+`, Credit `-`) in its own Currency. */
+export interface BalanceRow {
+	readonly entityId: string
+	readonly accountId: AccountId
+	readonly currency: Currency
+	readonly amount: number
+}
+
+/** Order rows by `entityId`, `accountId`, then `currency`, by code unit. */
+export const compareRows = (a: BalanceRow, b: BalanceRow): number =>
+	byCodeUnit(a.entityId, b.entityId) ||
+	byCodeUnit(a.accountId, b.accountId) ||
+	byCodeUnit(a.currency, b.currency)
+
+/**
+ * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. Header
+ * Accounts never appear, so summing the rows never double counts.
+ *
+ * TODO(#14): Header Account roll-ups live in a separate query, never in these rows.
+ */
+export const balances = (
+	transactions: readonly Transaction[],
+	asOf: string,
+	chart: ChartOfAccounts,
+): readonly BalanceRow[] => {
+	const cutoff = parseISODate(asOf, "asOf")
+	const sums = new Map<AccountId, bigint>()
+	for (const { account, posting, date } of scanLedger(transactions, chart)) {
+		if (date <= cutoff) sums.set(account.id, (sums.get(account.id) ?? 0n) + BigInt(posting.amount))
+	}
+	return Object.freeze(
+		[...chart.values()]
+			.filter((account) => chart.isLeaf(account.id))
+			.map((account) =>
+				Object.freeze({
+					entityId: account.entityId,
+					accountId: account.id,
+					currency: account.currency,
+					amount: toSafeAmount(sums.get(account.id) ?? 0n, `balances[${account.id}]`),
+				}),
+			)
+			.sort(compareRows),
+	)
+}
