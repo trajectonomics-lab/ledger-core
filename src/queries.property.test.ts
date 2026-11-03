@@ -120,11 +120,8 @@ describe("query properties", () => {
 			const txs = ledgerOf(seed)
 			const options = { from: "2024-01-01", to: "2024-12-31" }
 			const grouped = profitAndLoss(txs, { ...options, groupBy: "team" }, chart).totals
-			const plain = profitAndLoss(txs, options, chart).totals.filter((t) => t.amount !== 0)
-			expect(
-				grouped.filter((t) => t.amount !== 0),
-				`seed ${seed}`,
-			).toEqual(plain)
+			const plain = profitAndLoss(txs, options, chart).totals
+			expect(grouped, `seed ${seed}`).toEqual(plain)
 		}
 	})
 })

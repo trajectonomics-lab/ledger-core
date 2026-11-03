@@ -21,26 +21,27 @@ export const compareTotals = (a: Total, b: Total): number =>
 
 /**
  * Sum `sign * amount` per `(Entity, Currency)` with `BigInt`, checking each total against the safe
- * integer range. One total per pair present in `rows`, sorted.
+ * integer range. One total per pair present in `rows`, sorted. `label` names the query in errors.
  */
 export const totalsOf = (
 	rows: readonly Addend[],
 	sign: 1n | -1n,
-	field: string,
+	label: string,
 ): readonly Total[] => {
-	const sums = new Map<string, Total & { sum: bigint }>()
+	const slots = new Map<string, { entityId: string; currency: Currency; sum: bigint }>()
 	for (const { entityId, currency, amount } of rows) {
 		const key = JSON.stringify([entityId, currency])
-		const sum = (sums.get(key)?.sum ?? 0n) + sign * BigInt(amount)
-		sums.set(key, { entityId, currency, amount: 0, sum })
+		const slot = slots.get(key) ?? { entityId, currency, sum: 0n }
+		slot.sum += sign * BigInt(amount)
+		slots.set(key, slot)
 	}
 	return Object.freeze(
-		[...sums.values()]
+		[...slots.values()]
 			.map(({ entityId, currency, sum }) =>
 				Object.freeze({
 					entityId,
 					currency,
-					amount: toSafeAmount(sum, `${field}[${JSON.stringify([entityId, currency])}]`),
+					amount: toSafeAmount(sum, `${label}.totals[${entityId}/${currency}]`),
 				}),
 			)
 			.sort(compareTotals),

@@ -6,16 +6,16 @@ import type { Posting } from "./posting"
 import type { Transaction } from "./transaction"
 import { validateTransaction } from "./transaction"
 
-/** One Posting with the Account it targets and the date of its Transaction. */
-export interface LedgerEntry {
+/** A Posting with the Account it targets and the date of its Transaction. */
+export interface ScannedPosting {
 	readonly account: Account
 	readonly posting: Posting
 	readonly date: ISODate
 }
 
-const recheck = (tx: Transaction, index: number, chart: ChartOfAccounts): void => {
+const recheck = (tx: Transaction, index: number, chart: ChartOfAccounts): Transaction => {
 	try {
-		validateTransaction(tx, chart)
+		return validateTransaction(tx, chart)
 	} catch (error) {
 		if (!(error instanceof LedgerValidationError)) throw error
 		throw new LedgerValidationError(
@@ -29,12 +29,12 @@ const recheck = (tx: Transaction, index: number, chart: ChartOfAccounts): void =
 
 /**
  * Re-check every Transaction against the supplied chart (a Transaction is not tied to the chart
- * that validated it) and flatten them into Entries. Throws on a duplicate Transaction id.
+ * that validated it) and flatten them into Postings. Throws on a duplicate Transaction id.
  */
 export const scanLedger = (
 	transactions: readonly Transaction[],
 	chart: ChartOfAccounts,
-): readonly LedgerEntry[] => {
+): readonly ScannedPosting[] => {
 	const seen = new Set<string>()
 	return transactions.flatMap((tx, index) => {
 		if (seen.has(tx.id)) {
@@ -46,11 +46,11 @@ export const scanLedger = (
 			)
 		}
 		seen.add(tx.id)
-		recheck(tx, index, chart)
-		return tx.postings.map((posting) => ({
+		const checked = recheck(tx, index, chart)
+		return checked.postings.map((posting) => ({
 			account: chart.get(posting.accountId)!,
 			posting,
-			date: tx.date,
+			date: checked.date,
 		}))
 	})
 }

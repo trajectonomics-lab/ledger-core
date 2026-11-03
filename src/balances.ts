@@ -45,7 +45,7 @@ export const balances = (
 					entityId: account.entityId,
 					accountId: account.id,
 					currency: account.currency,
-					amount: toSafeAmount(sums.get(account.id) ?? 0n, `balances[${account.id}]`),
+					amount: toSafeAmount(sums.get(account.id) ?? 0n, `balances.rows[${account.id}]`),
 				}),
 			)
 			.sort(compareRows),

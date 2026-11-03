@@ -71,4 +71,13 @@ describe("profitAndLoss dimensions", () => {
 		const { rows } = profitAndLoss(ledger, { ...year, groupBy: "constructor" }, chart)
 		expect(rows.every((r) => r.dimensionValue === null)).toBe(true)
 	})
+
+	it("keeps the totals' shape when no group matches", () => {
+		const options = { ...year, where: { project: "none" } }
+		const plain = profitAndLoss(ledger, options, chart)
+		const byTeam = profitAndLoss(ledger, { ...options, groupBy: "costCentre" }, chart)
+		expect(byTeam.rows).toEqual([])
+		expect(byTeam.totals).toEqual(plain.totals)
+		expect(plain.totals).toEqual(total(0))
+	})
 })

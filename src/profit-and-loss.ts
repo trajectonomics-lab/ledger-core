@@ -1,6 +1,6 @@
 import type { BalanceRow } from "./balances"
 import type { ChartOfAccounts } from "./chart-map"
-import { dimensionOf, matchesAll } from "./dimensions"
+import { matchesAll } from "./dimensions"
 import { scanLedger } from "./ledger-scan"
 import { inPeriod, parsePeriod } from "./period"
 import type { GroupedRow } from "./profit-and-loss-rows"
@@ -36,11 +36,13 @@ export function profitAndLoss(
 	options: ProfitAndLossOptions & { readonly groupBy: string },
 	chart: ChartOfAccounts,
 ): ProfitAndLoss<GroupedRow>
+/** P&L without grouping: one row per Income and Expense Leaf Account. */
 export function profitAndLoss(
 	transactions: readonly Transaction[],
 	options: ProfitAndLossOptions & { readonly groupBy?: undefined },
 	chart: ChartOfAccounts,
 ): ProfitAndLoss
+/** P&L when `groupBy` is only known at runtime: rows are plain or grouped. */
 export function profitAndLoss(
 	transactions: readonly Transaction[],
 	options: ProfitAndLossOptions,
@@ -59,14 +61,14 @@ export function profitAndLoss(
 			matchesAll(posting, options.where ?? {}),
 	)
 	const { groupBy } = options
-	const rows =
-		groupBy === undefined
-			? plainRows(
-					[...chart.values()].filter(
-						(a) => chart.isLeaf(a.id) && (a.type === "income" || a.type === "expense"),
-					),
-					entries,
-				)
-			: groupedRows(entries, ({ posting }) => dimensionOf(posting, groupBy))
-	return Object.freeze({ rows: Object.freeze(rows), totals: totalsOf(rows, -1n, "profitAndLoss") })
+	const leaves = [...chart.values()].filter(
+		(a) => chart.isLeaf(a.id) && (a.type === "income" || a.type === "expense"),
+	)
+	const rows = groupBy === undefined ? plainRows(leaves, entries) : groupedRows(entries, groupBy)
+	// Seed every Income and Expense Leaf's pair so the totals' shape never depends on the data.
+	const pairs = leaves.map(({ entityId, currency }) => ({ entityId, currency, amount: 0 }))
+	return Object.freeze({
+		rows: Object.freeze(rows),
+		totals: totalsOf([...pairs, ...rows], -1n, "profitAndLoss"),
+	})
 }

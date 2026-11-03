@@ -52,16 +52,23 @@ export const trialBalance = (
 		1n,
 		"trialBalance.debit",
 	)
-	const credits = totalsOf(
-		rows.map((r) => ({ ...r, amount: r.credit })),
-		1n,
-		"trialBalance.credit",
+	const credits = new Map(
+		totalsOf(
+			rows.map((r) => ({ ...r, amount: r.credit })),
+			1n,
+			"trialBalance.credit",
+		).map((t) => [JSON.stringify([t.entityId, t.currency]), t.amount]),
 	)
 	return Object.freeze({
 		rows: Object.freeze(rows),
 		totals: Object.freeze(
-			debits.map(({ entityId, currency, amount }, i) =>
-				Object.freeze({ entityId, currency, debit: amount, credit: credits[i]!.amount }),
+			debits.map(({ entityId, currency, amount }) =>
+				Object.freeze({
+					entityId,
+					currency,
+					debit: amount,
+					credit: credits.get(JSON.stringify([entityId, currency]))!,
+				}),
 			),
 		),
 	})
