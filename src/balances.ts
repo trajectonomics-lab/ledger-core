@@ -1,3 +1,4 @@
+import type { Account } from "./account"
 import type { ChartOfAccounts } from "./chart-map"
 import { byCodeUnit } from "./compare"
 import type { Currency } from "./currency"
@@ -22,15 +23,14 @@ export const compareRows = (a: BalanceRow, b: BalanceRow): number =>
 	byCodeUnit(a.currency, b.currency)
 
 /**
- * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. Header
- * Accounts never appear, so summing the rows never double counts.
- *
- * TODO(#14): Header Account roll-ups live in a separate query, never in these rows.
+ * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. `fieldOf` gives
+ * the output path an `AMOUNT_OVERFLOW` reports for a Leaf, so it names the query the caller called.
  */
-export const balances = (
+export const leafBalances = (
 	transactions: readonly Transaction[],
 	asOf: string,
 	chart: ChartOfAccounts,
+	fieldOf: (account: Account) => string,
 ): readonly BalanceRow[] => {
 	const cutoff = parseISODate(asOf, "asOf")
 	const sums = new Map<AccountId, bigint>()
@@ -45,9 +45,22 @@ export const balances = (
 					entityId: account.entityId,
 					accountId: account.id,
 					currency: account.currency,
-					amount: toSafeAmount(sums.get(account.id) ?? 0n, `balances.rows[${account.id}]`),
+					amount: toSafeAmount(sums.get(account.id) ?? 0n, fieldOf(account)),
 				}),
 			)
 			.sort(compareRows),
 	)
 }
+
+/**
+ * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. Header
+ * Accounts never appear, so summing the rows never double counts.
+ *
+ * TODO(#14): Header Account roll-ups live in a separate query, never in these rows.
+ */
+export const balances = (
+	transactions: readonly Transaction[],
+	asOf: string,
+	chart: ChartOfAccounts,
+): readonly BalanceRow[] =>
+	leafBalances(transactions, asOf, chart, (account) => `balances[${account.id}]`)

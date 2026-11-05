@@ -97,6 +97,13 @@ describe("query properties", () => {
 			)
 			expect(netWorth(other, "2024-02-20", chart)).toEqual(netWorth(txs, "2024-02-20", chart))
 			expect(profitAndLoss(other, period, chart)).toEqual(profitAndLoss(txs, period, chart))
+			for (const options of [
+				{ ...period, groupBy: "team" },
+				{ ...period, where: { team: "a" } },
+				{ ...period, groupBy: "team", where: { team: "b" } },
+			]) {
+				expect(profitAndLoss(other, options, chart)).toEqual(profitAndLoss(txs, options, chart))
+			}
 		}
 	})
 

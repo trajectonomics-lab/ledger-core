@@ -1,5 +1,6 @@
+import type { Account } from "./account"
 import type { BalanceRow } from "./balances"
-import { balances } from "./balances"
+import { leafBalances } from "./balances"
 import type { ChartOfAccounts } from "./chart-map"
 import type { Total } from "./totals"
 import { totalsOf } from "./totals"
@@ -21,9 +22,12 @@ export const netWorth = (
 	asOf: string,
 	chart: ChartOfAccounts,
 ): NetWorth => {
-	const rows = balances(transactions, asOf, chart).filter((row) => {
-		const type = chart.get(row.accountId)!.type
-		return type === "asset" || type === "liability"
+	const counted = (account: Account) => account.type === "asset" || account.type === "liability"
+	const rows = leafBalances(transactions, asOf, chart, (account) =>
+		counted(account) ? `netWorth.rows[${account.id}]` : `netWorth[${account.id}]`,
+	).filter((row) => counted(chart.get(row.accountId)!))
+	return Object.freeze({
+		rows: Object.freeze(rows),
+		totals: totalsOf(rows, 1n, (pair) => `netWorth.totals[${pair}]`),
 	})
-	return Object.freeze({ rows: Object.freeze(rows), totals: totalsOf(rows, 1n, "netWorth") })
 }

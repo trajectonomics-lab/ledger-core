@@ -1,4 +1,4 @@
-import { balances } from "./balances"
+import { leafBalances } from "./balances"
 import type { ChartOfAccounts } from "./chart-map"
 import type { Currency } from "./currency"
 import type { AccountId } from "./ids"
@@ -37,7 +37,7 @@ export const trialBalance = (
 	asOf: string,
 	chart: ChartOfAccounts,
 ): TrialBalance => {
-	const rows = balances(transactions, asOf, chart).map(
+	const rows = leafBalances(transactions, asOf, chart, (a) => `trialBalance.rows[${a.id}]`).map(
 		({ entityId, accountId, currency, amount }) =>
 			Object.freeze({
 				entityId,
@@ -50,13 +50,13 @@ export const trialBalance = (
 	const debits = totalsOf(
 		rows.map((r) => ({ ...r, amount: r.debit })),
 		1n,
-		"trialBalance.debit",
+		(pair) => `trialBalance.totals[${pair}].debit`,
 	)
 	const credits = new Map(
 		totalsOf(
 			rows.map((r) => ({ ...r, amount: r.credit })),
 			1n,
-			"trialBalance.credit",
+			(pair) => `trialBalance.totals[${pair}].credit`,
 		).map((t) => [JSON.stringify([t.entityId, t.currency]), t.amount]),
 	)
 	return Object.freeze({

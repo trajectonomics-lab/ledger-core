@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { codeOf } from "./builders.fixtures"
-import { balances, netWorth, profitAndLoss, trialBalance } from "./index"
+import { balance, balances, netWorth, profitAndLoss, trialBalance } from "./index"
 import { chart, thb, tx } from "./queries.fixtures"
 
 const MAX = Number.MAX_SAFE_INTEGER
@@ -18,6 +18,9 @@ const thrown = (run: () => unknown): { code?: string; field?: string } | undefin
 	}
 	return undefined
 }
+
+/** The `field` of the error a thunk throws, or undefined. */
+const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
 
 describe("overflow", () => {
 	it("accepts a Balance of exactly the safe integer limit", () => {
@@ -48,7 +51,7 @@ describe("overflow", () => {
 		const txs = [post("a", "cash", "equity", BIG), post("b", "savings", "salary", BIG)]
 		expect(thrown(() => trialBalance(txs, "2024-01-01", chart))).toMatchObject({
 			code: "AMOUNT_OVERFLOW",
-			field: "trialBalance.debit.totals[default/THB]",
+			field: "trialBalance.totals[default/THB].debit",
 		})
 	})
 
@@ -67,11 +70,24 @@ describe("overflow", () => {
 			post("b", "food", "cash", BIG, { team: "x" }),
 		]
 		const options = { from: "2024-01-01", to: "2024-01-01" }
-		const field = "profitAndLoss.rows[food]"
-		expect(thrown(() => profitAndLoss(txs, options, chart))).toMatchObject({ field })
-		expect(thrown(() => profitAndLoss(txs, { ...options, groupBy: "team" }, chart))).toMatchObject({
-			code: "AMOUNT_OVERFLOW",
-			field,
-		})
+		const error = { code: "AMOUNT_OVERFLOW", field: "profitAndLoss.rows[food]" }
+		expect(thrown(() => profitAndLoss(txs, options, chart))).toMatchObject(error)
+		expect(thrown(() => profitAndLoss(txs, { ...options, groupBy: "team" }, chart))).toMatchObject(
+			error,
+		)
+	})
+
+	it("names the output path of the query called for an overflowing Balance", () => {
+		const txs = [post("a", "cash", "equity", MAX), post("b", "cash", "equity", 1)]
+		expect(fieldOf(() => balances(txs, "2024-01-01", chart))).toBe("balances[cash]")
+		expect(fieldOf(() => balance(txs, "cash", "2024-01-01", chart))).toBe("balance.amount")
+		expect(fieldOf(() => netWorth(txs, "2024-01-01", chart))).toBe("netWorth.rows[cash]")
+		expect(fieldOf(() => trialBalance(txs, "2024-01-01", chart))).toBe("trialBalance.rows[cash]")
+	})
+
+	it("names the query called and the Account for a Leaf it reads but does not return", () => {
+		const txs = [post("a", "food", "cash", MAX), post("b", "food", "savings", 1)]
+		expect(fieldOf(() => netWorth(txs, "2024-01-01", chart))).toBe("netWorth[food]")
+		expect(fieldOf(() => balance(txs, "cash", "2024-01-01", chart))).toBe("balance[food]")
 	})
 })

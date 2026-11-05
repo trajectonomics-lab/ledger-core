@@ -1,5 +1,5 @@
 import type { BalanceRow } from "./balances"
-import { balances } from "./balances"
+import { leafBalances } from "./balances"
 import type { ChartOfAccounts } from "./chart-map"
 import { LedgerValidationError } from "./errors"
 import { accountId as toAccountId } from "./ids"
@@ -34,5 +34,7 @@ export const balance = (
 			"is a header account",
 		)
 	}
-	return balances(transactions, asOf, chart).find((row) => row.accountId === id)!
+	return leafBalances(transactions, asOf, chart, (account) =>
+		account.id === id ? "balance.amount" : `balance[${account.id}]`,
+	).find((row) => row.accountId === id)!
 }

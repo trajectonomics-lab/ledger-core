@@ -21,15 +21,16 @@ export const compareTotals = (a: Total, b: Total): number =>
 
 /**
  * Sum `sign * amount` per `(Entity, Currency)` with `BigInt`, checking each total against the safe
- * integer range. One total per pair present in `rows`, sorted. `label` names the query in errors.
+ * integer range. One total per pair among the addends, sorted; a zero addend still yields its pair,
+ * which is how P&L seeds its totals. `fieldOf` gives the output path an overflow reports for a pair.
  */
 export const totalsOf = (
-	rows: readonly Addend[],
+	addends: readonly Addend[],
 	sign: 1n | -1n,
-	label: string,
+	fieldOf: (pair: string) => string,
 ): readonly Total[] => {
 	const slots = new Map<string, { entityId: string; currency: Currency; sum: bigint }>()
-	for (const { entityId, currency, amount } of rows) {
+	for (const { entityId, currency, amount } of addends) {
 		const key = JSON.stringify([entityId, currency])
 		const slot = slots.get(key) ?? { entityId, currency, sum: 0n }
 		slot.sum += sign * BigInt(amount)
@@ -41,7 +42,7 @@ export const totalsOf = (
 				Object.freeze({
 					entityId,
 					currency,
-					amount: toSafeAmount(sum, `${label}.totals[${entityId}/${currency}]`),
+					amount: toSafeAmount(sum, fieldOf(`${entityId}/${currency}`)),
 				}),
 			)
 			.sort(compareTotals),
