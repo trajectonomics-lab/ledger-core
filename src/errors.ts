@@ -20,6 +20,8 @@ export type LedgerErrorCode =
 	| "DUPLICATE_TRANSACTION_ID"
 	| "REVERSAL_BEFORE_ORIGINAL"
 	| "NON_EQUITY_CONTRA"
+	| "INVALID_PERIOD"
+	| "AMOUNT_OVERFLOW"
 
 /** Thrown by every smart constructor and validator in this package. */
 export class LedgerValidationError extends Error {
