@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for AI coding agents in `trajectonomics/ledger-core` (`@trajectonomics/ledger-core` on npm).
+Instructions for AI coding agents in `trajectonomics/ledger-core` (`@trajectonomics/ledger` on npm).
 
 ## Rules
 
