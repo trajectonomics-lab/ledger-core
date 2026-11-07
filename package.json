@@ -1,5 +1,5 @@
 {
-	"name": "@trajectonomics/ledger-core",
+	"name": "@trajectonomics/ledger",
 	"version": "0.0.0-development",
 	"description": "Pure double-entry ledger domain: accounts, balanced postings, balances, net worth, P&L. No I/O.",
 	"license": "MIT",

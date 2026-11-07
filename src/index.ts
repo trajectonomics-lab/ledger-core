@@ -1,5 +1,5 @@
 /**
- * @trajectonomics/ledger-core — pure double-entry bookkeeping: data in, data out.
+ * @trajectonomics/ledger — pure double-entry bookkeeping: data in, data out.
  * No I/O, clock, randomness or id generation; callers supply ids.
  *
  * Sign convention: amounts are signed integer minor units. Debit is `+` (normal balance of
